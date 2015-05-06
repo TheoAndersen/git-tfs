@@ -57,12 +57,48 @@ namespace Sep.Git.Tfs.Test.Integration
             AssertLine(5, "");
         }
 
+        [FactExceptOnUnix()]
+        public void ASingleRootBranchWithTwoSubBranches()
+        {
+            integrationHelper.SetupFake(r =>
+            {
+                r.SetRootBranch("$/MyProject/RootBranch");
+                r.Changeset(1, "initial commit", DateTime.Parse("2012-01-01 12:12:12 -05:00"));
+                r.BranchChangeset(2, "branched out", DateTime.Parse("2012-01-01 12:14:12 -05:00"), "$/MyProject/RootBranch", "$/MyProject/SubBranchA", 1);
+                r.BranchChangeset(3, "branched out", DateTime.Parse("2012-01-01 12:15:12 -05:00"), "$/MyProject/RootBranch", "$/MyProject/SubBranchB", 1);
+            });
+
+            integrationHelper.Run("list-remote-branches", integrationHelper.TfsUrl);
+
+            AssertLine(2, "TFS branches that could be cloned:");
+            AssertLine(3, "");
+            AssertLine(4, " $/MyProject/RootBranch [*]");
+            AssertLine(5, " | ");
+            AssertLine(6, " +- $/MyProject/SubBranchA");
+            AssertLine(7, " | ");
+            AssertLine(8, " +- $/MyProject/SubBranchB");
+            AssertLine(9, "");
+        }
+
         public void AssertLine(int lineNum, string expectedLine)
         {
             string[] lines = Regex.Split(output.ToString(), "\r\n|\r|\n");
 
             Assert.True(lines.Count() >= lineNum, "There is no line " + lineNum + " in output (output has " + lines.Count() + " lines");
-            Assert.Equal(expectedLine, lines[lineNum-1]);
+            AssertEqual(expectedLine, lines[lineNum-1], "Line " + lineNum);
+        }
+
+        // Assert Equal with message - XUnit thinks these isn't needed, but they are wrong :(
+        public void AssertEqual(string expected, string actual, string message)
+        {
+            try
+            {
+                Assert.Equal(expected, actual);
+            }
+            catch(Exception e)
+            {
+                Assert.True(false, message + "\r\n" + e.Message);
+            }
         }
     }
 }
