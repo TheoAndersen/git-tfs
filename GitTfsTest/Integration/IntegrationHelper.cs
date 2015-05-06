@@ -208,6 +208,20 @@ namespace Sep.Git.Tfs.Test.Integration
             {
                 _script.RootBranches.Add(new ScriptedRootBranch(){BranchPath = rootBranchPath});
             }
+
+            public void SetBranchDeleted(string branchPath)
+            {
+                foreach (var branch in _script.RootBranches.Where(b => b.BranchPath == branchPath))
+                {
+                    branch.IsDeleted = true;
+                }
+
+                foreach(var branch in _script.Changesets.Where(c => c.IsBranchChangeset == true &&
+                                                                    c.MergeChangesetDatas.BranchPath == branchPath))
+                {
+                    branch.MergeChangesetDatas.BranchIsDeleted = true;
+                }
+            }
         }
 
         public class FakeChangesetBuilder

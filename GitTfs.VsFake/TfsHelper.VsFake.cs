@@ -398,13 +398,29 @@ namespace Sep.Git.Tfs.VsFake
         public IEnumerable<IBranchObject> GetBranches(bool getDeletedBranches = false)
         {
             var branches = new List<IBranchObject>();
-            branches.AddRange(_script.RootBranches.Select(b => new MockBranchObject { IsRoot = true, Path = b.BranchPath, ParentPath = null }));
-            branches.AddRange(_script.Changesets.Where(c=>c.IsBranchChangeset).Select(c => new MockBranchObject
+
+            IEnumerable<ScriptedRootBranch> rootBranches = _script.RootBranches;
+            IEnumerable<ScriptedChangeset> otherBranches = _script.Changesets.Where(c => c.IsBranchChangeset);
+
+            if (getDeletedBranches == false)
+            {
+                rootBranches = rootBranches.Where(rb => rb.IsDeleted == false);
+                otherBranches = otherBranches.Where(cs => cs.MergeChangesetDatas == null || cs.MergeChangesetDatas.BranchIsDeleted == false);
+            }
+
+            branches.AddRange(rootBranches.Select(b => new MockBranchObject 
+            { 
+                IsRoot = true, 
+                Path = b.BranchPath, 
+                ParentPath = null 
+            }));
+            branches.AddRange(otherBranches.Select(c => new MockBranchObject
                     {
                         IsRoot = false,
                         Path = c.BranchChangesetDatas.BranchPath,
                         ParentPath = c.BranchChangesetDatas.ParentBranch
                     }));
+
             return branches;
         }
         #endregion

@@ -271,9 +271,9 @@ namespace Sep.Git.Tfs.Commands
             return GitTfsExitCodes.OK;
         }
 
-        public static void WriteRemoteTfsBranchStructure(ITfsHelper tfsHelper, TextWriter writer, string tfsRepositoryPath, IEnumerable<IGitTfsRemote> tfsRemotes = null)
+        public static void WriteRemoteTfsBranchStructure(ITfsHelper tfsHelper, TextWriter writer, string tfsRepositoryPath, IEnumerable<IGitTfsRemote> tfsRemotes = null, bool includeDeletedBranches = false)
         {
-            var root = tfsHelper.GetRootTfsBranchForRemotePath(tfsRepositoryPath);
+            var root = tfsHelper.GetRootTfsBranchForRemotePath(tfsRepositoryPath, true, includeDeletedBranches);
 
             if (!tfsHelper.CanGetBranchInformation)
             {

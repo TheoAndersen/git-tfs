@@ -48,9 +48,9 @@ namespace Sep.Git.Tfs.Core.TfsInterop
 
     public static class BranchExtensions
     {
-        public static BranchTree GetRootTfsBranchForRemotePath(this ITfsHelper tfs, string remoteTfsPath, bool searchExactPath = true)
+        public static BranchTree GetRootTfsBranchForRemotePath(this ITfsHelper tfs, string remoteTfsPath, bool searchExactPath = true, bool searchDeletedBranches = false)
         {
-            var branches = tfs.GetBranches();
+            var branches = tfs.GetBranches(searchDeletedBranches);
             var branchTrees = branches.Aggregate(new Dictionary<string, BranchTree>(StringComparer.OrdinalIgnoreCase), (dict, branch) => dict.Tap(d => d.Add(branch.Path, new BranchTree(branch))));
             foreach(var branch in branchTrees.Values)
             {
