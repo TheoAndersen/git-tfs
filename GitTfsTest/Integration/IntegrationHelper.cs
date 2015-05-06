@@ -267,7 +267,12 @@ namespace Sep.Git.Tfs.Test.Integration
                 Environment.SetEnvironmentVariable(Script.EnvVar, FakeScript);
                 Console.WriteLine(">> git tfs " + QuoteArgs(args));
                 var argsWithDebug = new List<string>();
-                argsWithDebug.Add("--debug");
+               
+                if (!DisableDebugMode)
+                {
+                    argsWithDebug.Add("--debug");
+                }
+                    
                 argsWithDebug.AddRange(args);
                 return Program.MainCore(argsWithDebug.ToArray());
             }
@@ -417,5 +422,7 @@ namespace Sep.Git.Tfs.Test.Integration
         }
 
         #endregion
+
+        public bool DisableDebugMode { get; set; }
     }
 }
