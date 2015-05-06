@@ -170,6 +170,26 @@ namespace Sep.Git.Tfs.Test.Integration
         }
 
         [FactExceptOnUnix]
+        public void WhenCloningADeletedTrunkWithMergeChangesetWithAllBranches_ThenThe2BranchesAreAutomaticallyInitialized()
+        {
+            h.SetupFake(fakeHistoryBuilder =>
+            {
+                CreateFakeRepositoryWithMergeChangeset(fakeHistoryBuilder);
+                fakeHistoryBuilder.SetBranchDeleted("$/MyProject/Main");
+            });
+
+            h.Run("clone", h.TfsUrl, "$/MyProject/Main", "MyProject", "--with-branches");
+
+            h.AssertFileInWorkspace("MyProject", "File.txt", "File contents_main_branch=>_merge");
+            AssertNewClone("MyProject", RefsInNewClone,
+                commit: "be59d37d08a0cc78916f04a256dc52f6722f800c",
+                tree: "cf8a497b3a40028bee363a613fe156b9d37350bb");
+            AssertNewClone("MyProject", new[] { "refs/heads/Branch", "refs/remotes/tfs/Branch" },
+                commit: "0df2815a74403cfe96ccb96e3f995970f55df2b4",
+                tree: "c379179fee2ce45e44a5a2dd1d9bcf5ce8489608");
+        }
+
+        [FactExceptOnUnix]
         public void WhenCloningTrunkWithMergeChangesetWithAllBranches_ThenThe2BranchesAreAutomaticallyInitialized()
         {
             h.SetupFake(fakeHistoryBuilder =>
@@ -222,6 +242,9 @@ namespace Sep.Git.Tfs.Test.Integration
                 commit: "843a915aea98894fef51379d68a0f309e8537dd5",
                 tree: "cf8a497b3a40028bee363a613fe156b9d37350bb");
         }
+
+
+
         private readonly string[] RefsInNewClone = new[] { "HEAD", "refs/heads/master", "refs/remotes/tfs/default" };
 
         /// <summary>

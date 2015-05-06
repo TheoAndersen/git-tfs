@@ -217,6 +217,7 @@ namespace Sep.Git.Tfs.Test.Integration
                 }
 
                 foreach(var branch in _script.Changesets.Where(c => c.IsBranchChangeset == true &&
+                                                                    c.MergeChangesetDatas != null &&
                                                                     c.MergeChangesetDatas.BranchPath == branchPath))
                 {
                     branch.MergeChangesetDatas.BranchIsDeleted = true;
