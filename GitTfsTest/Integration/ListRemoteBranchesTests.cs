@@ -41,6 +41,22 @@ namespace Sep.Git.Tfs.Test.Integration
             AssertLine(2, "No TFS branches were found!");
         }
 
+        [FactExceptOnUnix()]
+        public void ASingleRootBranch()
+        {
+            integrationHelper.SetupFake(r => 
+            {
+                r.SetRootBranch("$/MyProject/RootBranch");
+            });
+
+            integrationHelper.Run("list-remote-branches", integrationHelper.TfsUrl);
+
+            AssertLine(2, "TFS branches that could be cloned:");
+            AssertLine(3, "");
+            AssertLine(4, " $/MyProject/RootBranch [*]");
+            AssertLine(5, "");
+        }
+
         public void AssertLine(int lineNum, string expectedLine)
         {
             string[] lines = Regex.Split(output.ToString(), "\r\n|\r|\n");
