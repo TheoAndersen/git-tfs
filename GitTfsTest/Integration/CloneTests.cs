@@ -23,6 +23,11 @@ namespace Sep.Git.Tfs.Test.Integration
             h.Dispose();
         }
 
+        [FactExceptOnUnix(Skip = "eventually")]
+        public void FailOnNoProject()
+        {
+        }
+
         [FactExceptOnUnix]
         public void ClonesEmptyProject()
         {
@@ -136,7 +141,7 @@ namespace Sep.Git.Tfs.Test.Integration
                 tree: "c962b51eb5397f1b98f662c9d43e6be13b7065f1");
         }
 
-        private void CreateFakeRepositoryWithMergeChangeset()
+        private void CreateFakeRepositoryWithMergeChangeset(IntegrationHelper.FakeHistoryBuilder fakeHistoryBuilder)
         {
             //History of changesets:
             //6
@@ -148,30 +153,30 @@ namespace Sep.Git.Tfs.Test.Integration
             //2
             //|
             //1
-            h.SetupFake(r =>
-            {
-                r.SetRootBranch("$/MyProject/Main");
-                r.Changeset(1, "Project created from template", DateTime.Parse("2012-01-01 12:12:12 -05:00"))
-                    .Change(TfsChangeType.Add, TfsItemType.Folder, "$/MyProject");
-                r.Changeset(2, "First commit", DateTime.Parse("2012-01-02 12:12:12 -05:00"))
-                    .Change(TfsChangeType.Add, TfsItemType.Folder, "$/MyProject/Main")
-                    .Change(TfsChangeType.Add, TfsItemType.File, "$/MyProject/Main/File.txt", "File contents");
-                r.Changeset(3, "commit in main", DateTime.Parse("2012-01-02 12:12:13 -05:00"))
-                    .Change(TfsChangeType.Edit, TfsItemType.File, "$/MyProject/Main/File.txt", "File contents_main");
-                r.BranchChangeset(4, "create branch", DateTime.Parse("2012-01-02 12:12:14 -05:00"), fromBranch: "$/MyProject/Main", toBranch: "$/MyProject/Branch", rootChangesetId: 2)
-                    .Change(TfsChangeType.Branch, TfsItemType.Folder, "$/MyProject/Branch")
-                    .Change(TfsChangeType.Branch, TfsItemType.File, "$/MyProject/Branch/File.txt", "File contents");
-                r.Changeset(5, "commit in branch", DateTime.Parse("2012-01-02 12:12:15 -05:00"))
-                    .Change(TfsChangeType.Edit, TfsItemType.File, "$/MyProject/Branch/File.txt", "File contents_branch");
-                r.MergeChangeset(6, "merge in main", DateTime.Parse("2012-01-02 12:12:16 -05:00"), fromBranch: "$/MyProject/Branch", intoBranch: "$/MyProject/Main", lastChangesetId: 5)
-                    .Change(TfsChangeType.Edit | TfsChangeType.Merge, TfsItemType.File, "$/MyProject/Main/File.txt", "File contents_main_branch=>_merge");
-            });
+            fakeHistoryBuilder.SetRootBranch("$/MyProject/Main");
+            fakeHistoryBuilder.Changeset(1, "Project created from template", DateTime.Parse("2012-01-01 12:12:12 -05:00"))
+                .Change(TfsChangeType.Add, TfsItemType.Folder, "$/MyProject");
+            fakeHistoryBuilder.Changeset(2, "First commit", DateTime.Parse("2012-01-02 12:12:12 -05:00"))
+                .Change(TfsChangeType.Add, TfsItemType.Folder, "$/MyProject/Main")
+                .Change(TfsChangeType.Add, TfsItemType.File, "$/MyProject/Main/File.txt", "File contents");
+            fakeHistoryBuilder.Changeset(3, "commit in main", DateTime.Parse("2012-01-02 12:12:13 -05:00"))
+                .Change(TfsChangeType.Edit, TfsItemType.File, "$/MyProject/Main/File.txt", "File contents_main");
+            fakeHistoryBuilder.BranchChangeset(4, "create branch", DateTime.Parse("2012-01-02 12:12:14 -05:00"), fromBranch: "$/MyProject/Main", toBranch: "$/MyProject/Branch", rootChangesetId: 2)
+                .Change(TfsChangeType.Branch, TfsItemType.Folder, "$/MyProject/Branch")
+                .Change(TfsChangeType.Branch, TfsItemType.File, "$/MyProject/Branch/File.txt", "File contents");
+            fakeHistoryBuilder.Changeset(5, "commit in branch", DateTime.Parse("2012-01-02 12:12:15 -05:00"))
+                .Change(TfsChangeType.Edit, TfsItemType.File, "$/MyProject/Branch/File.txt", "File contents_branch");
+            fakeHistoryBuilder.MergeChangeset(6, "merge in main", DateTime.Parse("2012-01-02 12:12:16 -05:00"), fromBranch: "$/MyProject/Branch", intoBranch: "$/MyProject/Main", lastChangesetId: 5)
+                .Change(TfsChangeType.Edit | TfsChangeType.Merge, TfsItemType.File, "$/MyProject/Main/File.txt", "File contents_main_branch=>_merge");
         }
 
         [FactExceptOnUnix]
         public void WhenCloningTrunkWithMergeChangesetWithAllBranches_ThenThe2BranchesAreAutomaticallyInitialized()
         {
-            CreateFakeRepositoryWithMergeChangeset();
+            h.SetupFake(fakeHistoryBuilder =>
+            {
+                CreateFakeRepositoryWithMergeChangeset(fakeHistoryBuilder);
+            });
 
             h.Run("clone", h.TfsUrl, "$/MyProject/Main", "MyProject", "--with-branches");
 
@@ -187,7 +192,10 @@ namespace Sep.Git.Tfs.Test.Integration
         [FactExceptOnUnix]
         public void WhenCloningTrunkWithMergeChangeset_ThenTheMergedBranchIsAutomaticallyInitialized()
         {
-            CreateFakeRepositoryWithMergeChangeset();
+            h.SetupFake(fakeHistoryBuilder =>
+            {
+                CreateFakeRepositoryWithMergeChangeset(fakeHistoryBuilder);
+            });
 
             h.Run("clone", h.TfsUrl, "$/MyProject/Main", "MyProject");
 
@@ -232,7 +240,10 @@ namespace Sep.Git.Tfs.Test.Integration
         [FactExceptOnUnix]
         public void WhenCloningTrunkWithIgnoringBranches_ThenTheMergedBranchIsAutomaticallyInitialized()
         {
-            CreateFakeRepositoryWithMergeChangeset();
+            h.SetupFake(fakeHistoryBuilder =>
+            {
+                CreateFakeRepositoryWithMergeChangeset(fakeHistoryBuilder);
+            });
 
             h.Run("clone", h.TfsUrl, "$/MyProject/Main", "MyProject", "--ignore-branches");
 
