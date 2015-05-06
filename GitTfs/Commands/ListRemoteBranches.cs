@@ -45,7 +45,7 @@ namespace Sep.Git.Tfs.Commands
                 throw new GitTfsException("error: this version of TFS doesn't support this functionality");
             }
 
-            var branches = tfsHelper.GetBranches().Where(b => b.IsRoot).ToList();
+            var branches = tfsHelper.GetBranches(getDeletedBranches: true).Where(b => b.IsRoot).ToList();
             if (branches.IsEmpty())
             {
                 stdout.WriteLine("No TFS branches were found!");
@@ -56,7 +56,7 @@ namespace Sep.Git.Tfs.Commands
                 stdout.WriteLine("TFS branches that could be cloned:");
                 foreach (var branchObject in branches.Where(b => b.IsRoot))
                 {
-                    Branch.WriteRemoteTfsBranchStructure(tfsHelper, stdout, branchObject.Path);
+                    Branch.WriteRemoteTfsBranchStructure(tfsHelper, stdout, branchObject.Path, null, true);
                 }
                 stdout.WriteLine("\nCloning root branches (marked by [*]) is recommended!");
                 stdout.WriteLine("\n\nPS:if your branch is not listed here, perhaps you should convert its containing folder into a branch in TFS:");

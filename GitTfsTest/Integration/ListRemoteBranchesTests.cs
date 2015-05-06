@@ -80,6 +80,30 @@ namespace Sep.Git.Tfs.Test.Integration
             AssertLine(9, "");
         }
 
+        [FactExceptOnUnix()]
+        public void ASingleDeletedRootBranchWithTwoSubBranches()
+        {
+            integrationHelper.SetupFake(r =>
+            {
+                r.SetRootBranch("$/MyProject/RootBranch");
+                r.SetBranchDeleted("$/MyProject/RootBranch");
+                r.Changeset(1, "initial commit", DateTime.Parse("2012-01-01 12:12:12 -05:00"));
+                r.BranchChangeset(2, "branched out", DateTime.Parse("2012-01-01 12:14:12 -05:00"), "$/MyProject/RootBranch", "$/MyProject/SubBranchA", 1);
+                r.BranchChangeset(3, "branched out", DateTime.Parse("2012-01-01 12:15:12 -05:00"), "$/MyProject/RootBranch", "$/MyProject/SubBranchB", 1);
+            });
+
+            integrationHelper.Run("list-remote-branches", integrationHelper.TfsUrl);
+
+            AssertLine(2, "TFS branches that could be cloned:");
+            AssertLine(3, "");
+            AssertLine(4, " $/MyProject/RootBranch [*]");
+            AssertLine(5, " | ");
+            AssertLine(6, " +- $/MyProject/SubBranchA");
+            AssertLine(7, " | ");
+            AssertLine(8, " +- $/MyProject/SubBranchB");
+            AssertLine(9, "");
+        }
+
         public void AssertLine(int lineNum, string expectedLine)
         {
             string[] lines = Regex.Split(output.ToString(), "\r\n|\r|\n");

@@ -88,11 +88,14 @@ namespace Sep.Git.Tfs.VsFake
         public int BeforeMergeChangesetId { get; set; }
         public string BranchPath { get; set; }
         public string MergeIntoBranch { get; set; }
+        public bool BranchIsDeleted { get; set; }
     }
 
     [Serializable]
     public class ScriptedRootBranch
     {
         public string BranchPath { get; set; }
+
+        public bool IsDeleted { get; set; }
     }
 }
