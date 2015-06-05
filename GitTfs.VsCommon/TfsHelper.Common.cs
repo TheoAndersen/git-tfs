@@ -1252,7 +1252,7 @@ namespace Sep.Git.Tfs.VsCommon
 
         public bool IsExistingInTfs(string path)
         {
-            return VersionControl.ServerItemExists(path, ItemType.Any);
+            return VersionControl.ServerItemExists(path, VersionSpec.Latest, DeletedState.Any, ItemType.Any);
         }
 
         protected void ConvertFolderIntoBranch(string tfsRepositoryPath)

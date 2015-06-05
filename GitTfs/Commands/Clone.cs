@@ -175,7 +175,7 @@ namespace Sep.Git.Tfs.Commands
 
                 if (!remote.Tfs.CanGetBranchInformation)
                     return;
-                var tfsTrunkRepository = remote.Tfs.GetRootTfsBranchForRemotePath(tfsRepositoryPath, false);
+                var tfsTrunkRepository = remote.Tfs.GetRootTfsBranchForRemotePath(tfsRepositoryPath, false, true);
                 if (tfsTrunkRepository == null)
                 {
                     var tfsRootBranches = remote.Tfs.GetAllTfsRootBranchesOrderedByCreation();
