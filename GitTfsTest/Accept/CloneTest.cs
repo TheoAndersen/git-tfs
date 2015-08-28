@@ -7,15 +7,34 @@ using Xunit;
 
 namespace Sep.Git.Tfs.Test.Accept
 {
-    public class CloneTest
+    public class ConsoleOutput
     {
-        StringWriter wtr;
-        string testDir = Path.GetTempPath() + "/testgittfs";
+        public StringWriter wtr;
 
-        public void SetFixture(CloneTest data)
+        public void OverrideConsoleOutput()
         {
             wtr = new StringWriter();
             Console.SetOut(wtr);
+        }
+
+        public override string ToString()
+        {
+            string output = wtr.ToString();
+            output = output.Replace("-", "_");  // to get around strange issue, where this char stops the rest of the output from being shown in Visual Studio 2013's test explorer
+            return output;
+        }
+    }
+
+    public class CloneTest
+    {
+        public ConsoleOutput output;
+        static string testDir = Path.GetTempPath() + "/testgittfs";
+
+        public CloneTest()
+        {
+            output = new ConsoleOutput();
+            output.OverrideConsoleOutput();
+
             Environment.SetEnvironmentVariable("GIT_TFS_CLIENT", "2013");
             
             if(Directory.Exists(testDir))
@@ -29,8 +48,22 @@ namespace Sep.Git.Tfs.Test.Accept
         [Fact]
         public void CanCloneARepositoryWhichHaveDeletedABranchAndRenamedAnotherThingToTheSameName()
         {
-            //??? this just works??
-            SetFixture(this);
+            /* History of $/GitTfsTFSTestServer/CreatedDeletedAndCreatedTheSameBranch/A
+             * 
+             *   Branch A                           Branch B
+             *   --------                           ---------
+             *   - 29000 Initial folder/file        
+             *   - 29001 Deleted branch A       
+             *   
+             *   Branch A (new branch, same name)
+             *   --------
+             *   - 29002 Created branch A again                       <--- this is the parent changeset of branch B
+             *                                      - 29003 Branched from A
+             *                                      
+             *  TODO: Find out why Git-tfs thinks the default remote root is 29000 and not rightly 29002 (as it should be because 
+             *  the branch created in 29000 was deleted in 29002
+             */
+
             Program.MainCore(new string[] 
                 {
                     "clone", 
@@ -39,33 +72,30 @@ namespace Sep.Git.Tfs.Test.Accept
                     testDir,
                     "--with-branches"
                 });
-            string output = wtr.ToString();
-            Assert.False(output.ToLower().Contains("error"), "there shouldn't be any errors \n" + output);
-            Assert.True(output.Contains("successively"), "should find success line \n" + output);
+
+            AssertThatOutputContainsTheWordSuccessivelyButNotError();
         }
 
         [Fact]
         public void CanCloneARepositoryWhichHaveDeletedABranchAndCreatedTheSameOneAgain()
         {
-            //??? this just works??
-            SetFixture(this);
-            Program.MainCore(new string[] 
+            var command = new string[] 
                 {
                     "clone", 
                     "https://tfs.codeplex.com:443/tfs/TFS28",
                     "$/GitTfsTFSTestServer/CreatedDeletedAndCreatedTheSameBranch/A",
                     testDir,
                     "--with-branches"
-                });
-            string output = wtr.ToString();
-            Assert.False(output.ToLower().Contains("error"), "there shouldn't be any errors \n" + output);
-            Assert.True(output.Contains("successively"), "should find success line \n" + output);
+                };
+            Console.WriteLine("Command: >git tfs " + string.Join(" ", command));
+            Program.MainCore(command);
+
+            AssertThatOutputContainsTheWordSuccessivelyButNotError();
         }
 
         [Fact]
         public void CanCloneARepositoryWithADeletedRootBranch()
         {
-            SetFixture(this);
             Program.MainCore(new string[] 
                 {
                     "clone", 
@@ -74,12 +104,17 @@ namespace Sep.Git.Tfs.Test.Accept
                     testDir,
                     "--with-branches"
                 });
-            string output = wtr.ToString();
-            Assert.False(output.ToLower().Contains("error"), "there shouldn't be any errors \n" + output);
-            Assert.True(output.Contains("successively"), "should find success line \n" + output);
+
+            AssertThatOutputContainsTheWordSuccessivelyButNotError();
         }
 
-        public void DeleteDirectory(string targetDir)
+        private void AssertThatOutputContainsTheWordSuccessivelyButNotError()
+        {
+            Assert.False(output.ToString().ToLower().Contains("error"), "there shouldn't be any errors \n" + output);
+            Assert.True(output.ToString().Contains("successively"), "should find success line \n" + output);
+        }
+
+        public static void DeleteDirectory(string targetDir)
         {
             File.SetAttributes(targetDir, FileAttributes.Normal);
 
