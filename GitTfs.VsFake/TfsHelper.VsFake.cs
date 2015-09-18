@@ -533,6 +533,11 @@ namespace Sep.Git.Tfs.VsFake
             throw new NotImplementedException();
         }
 
+        public long QueueGatedCheckinBuild(Uri value, string buildDefinitionName, string shelvesetName, string checkInTicket)
+        {
+            throw new NotImplementedException();
+        }
+
         #endregion
 
         private class FakeVersionControlServer : IVersionControlServer
