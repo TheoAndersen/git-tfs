@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Sep.Git.Tfs.Vs2013;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -45,6 +46,35 @@ namespace Sep.Git.Tfs.Test.Accept
             Directory.CreateDirectory(testDir);
         }
 
+        [Fact]
+        public void CanCloneARepositoryWhichHaveDeletedABranch()
+        {
+            /* History of $/GitTfsTFSTestServer/CreatedABranchAndDeletedIt/A
+             * 
+             *   Branch A                           Branch B                   Branch C (deleted)
+             *   --------                           ---------                  ---------
+             *   - 29003 Created folder A        
+             *                                      - 29204 Created branch b
+             *                                      - 29205 Changed text in B
+             *                                                                 - 29206 Branched from B
+             *                                                                 - 29207 deleted branch c
+             *
+             *   Why can't git-tfs identify that the root changeset for brach C is 29205?
+             * 
+             */
+
+            Program.MainCore(new string[] 
+                {
+                    "clone", 
+                    "https://tfs.codeplex.com:443/tfs/TFS28",
+                    "$/GitTfsTFSTestServer/CreatedABranchAndDeletedIt/A",
+                    testDir,
+                    "--with-branches"
+                });
+
+            AssertThatOutputContainsTheWordSuccessivelyButNotError();
+        }
+        
         [Fact]
         public void CanCloneARepositoryWhichHaveDeletedABranchAndRenamedAnotherThingToTheSameName()
         {

@@ -306,9 +306,12 @@ namespace Sep.Git.Tfs.VsCommon
 
                     var mergedItemsToFirstChangesetInBranchToCreate = GetMergeInfo(tfsPathBranchToCreate, tfsPathParentBranch, firstChangesetInBranchToCreate.ChangesetId, lastChangesetIdToCheck);
 
-                    string renameFromBranch;
-                    var rootChangesetInParentBranch =
-                        GetRelevantChangesetBasedOnChangeType(mergedItemsToFirstChangesetInBranchToCreate, tfsPathParentBranch, tfsPathBranchToCreate, out renameFromBranch);
+                    int rootChangesetInParentBranch = -1;
+
+                 
+
+                    string renameFromBranch = null;
+                    rootChangesetInParentBranch = GetRelevantChangesetBasedOnChangeType(firstChangesetInBranchToCreate, mergedItemsToFirstChangesetInBranchToCreate, tfsPathParentBranch, tfsPathBranchToCreate, out renameFromBranch);
 
                     AddNewRootBranch(rootBranches, new RootBranch(rootChangesetInParentBranch, tfsPathBranchToCreate));
                     Trace.WriteLineIf(renameFromBranch != null, "Found original branch '" + renameFromBranch + "' (renamed in branch '" + tfsPathBranchToCreate + "')");
@@ -410,7 +413,7 @@ namespace Sep.Git.Tfs.VsCommon
         /// </remarks>
         /// <returns>the <see cref="ChangesetSummary"/> of the changeset found.
         /// </returns>
-        private int GetRelevantChangesetBasedOnChangeType(IEnumerable<MergeInfo> merges, string tfsPathParentBranch, string tfsPathBranchToCreate, out string renameFromBranch)
+        private int GetRelevantChangesetBasedOnChangeType(Changeset firstChangesetInBranchToCreate, IEnumerable<MergeInfo> merges, string tfsPathParentBranch, string tfsPathBranchToCreate, out string renameFromBranch)
         {
             renameFromBranch = null;
             var merge = merges.FirstOrDefault(m => m.SourceItem.Equals(tfsPathParentBranch, StringComparison.InvariantCultureIgnoreCase)
@@ -427,6 +430,15 @@ namespace Sep.Git.Tfs.VsCommon
                 }
                 if (merge == null)
                 {
+                    _stdout.WriteLine("Could not find the parent root - trying to find it by history..");
+                    int rootChangesetInParentBranch = GetRootChangesetByHistory(firstChangesetInBranchToCreate.ChangesetId, tfsPathParentBranch);
+
+                    if (rootChangesetInParentBranch > -1)
+                    {
+                        _stdout.WriteLine("Found root changeset " + rootChangesetInParentBranch + " from createChangeset " + firstChangesetInBranchToCreate.ChangesetId + " in branch " + tfsPathBranchToCreate);
+                        return rootChangesetInParentBranch;
+                    }
+
                     _stdout.WriteLine("warning: git-tfs was unable to find the root changeset (ie the last common commit) between the branch '"
                                       + tfsPathBranchToCreate + "' and its parent branch '" + tfsPathParentBranch + "'.\n"
                                       + "(Any help to add support of this special case is welcomed! Open an issue on https://github.com/git-tfs/git-tfs/issue )\n\n"
@@ -477,6 +489,63 @@ namespace Sep.Git.Tfs.VsCommon
                             });
         }
 
+        private int GetRootChangesetByHistory(int changesetId, string parentBranchPath)
+        {
+            var currentChangeset = VersionControl.GetChangeset(changesetId);
+
+            var changesetsOnParent = VersionControl.QueryHistory(new QueryHistoryParameters(parentBranchPath, RecursionType.Full)
+            {
+                VersionEnd = new ChangesetVersionSpec(currentChangeset.ChangesetId) // find all changesets up before the one on the current
+            });
+
+            if (changesetsOnParent.Count() == 0)
+            {
+                return -1;
+            }
+
+            return changesetsOnParent.Max(c => c.ChangesetId); // the latest on the parent branch, before the current changeset must be the right parent?
+        }
+
+        /// <summary>
+        /// Looks through all the changesets changeItems, finds the merge from that and returns the largest sourceChangesetId.
+        /// </summary>
+        /// <param name="branchCreationChangesetId"></param>
+        /// <returns>Root changesetId from branch/merge to the given ChangesetId</returns>
+        private int GetRootChangesetFromMerge(int branchCreationChangesetId)
+        {
+            return GetRootChangesetFromMerge(VersionControl.GetChangeset(branchCreationChangesetId));
+        }
+
+        /// <summary>
+        /// Looks through all the changesets changeItems, finds the merge from that and returns the largest sourceChangesetId.
+        /// </summary>
+        /// <param name="branchCreationChangeset"></param>
+        /// <returns>Root changesetId from branch/merge to the given ChangesetId</returns>
+        private int GetRootChangesetFromMerge(Changeset branchCreationChangeset)
+        {
+            int rootChangesetId = -1;
+
+            foreach (Change change in branchCreationChangeset.Changes)
+            {
+                // find mergeHistory from the changeItem in the changeset
+                var mergeHistory = VersionControl.QueryMergesExtended(new ItemSpec(change.Item.ServerItem, RecursionType.Full),
+                                                                      new ChangesetVersionSpec(branchCreationChangeset.ChangesetId),
+                                                                      null,
+                                                                      null);
+                int currentNewestChangesetId = -1;
+
+                // Some items havent changed in the last changeset in the parent branch, so we need to find the biggest changesetId
+                currentNewestChangesetId = mergeHistory.Max(mh => mh.SourceChangeset.ChangesetId);
+
+                if (currentNewestChangesetId > rootChangesetId)
+                {
+                    rootChangesetId = currentNewestChangesetId;
+                }
+            }
+
+            return rootChangesetId;
+        }
+
         private static void AddNewRootBranch(IList<RootBranch> rootBranches, RootBranch rootBranch)
         {
             if (rootBranches.Any())
@@ -519,24 +588,31 @@ namespace Sep.Git.Tfs.VsCommon
             int firstChangesetInBranchToCreate, int lastChangesetIdToCheck)
         {
             var mergedItemsToFirstChangesetInBranchToCreate = new List<MergeInfo>();
-            var merges = VersionControl
-                .TrackMerges(new int[] { firstChangesetInBranchToCreate },
-                    new ItemIdentifier(tfsPathBranchToCreate),
-                    new ItemIdentifier[] { new ItemIdentifier(tfsPathParentBranch), },
-                    null)
-                .OrderByDescending(x => x.SourceChangeset.ChangesetId);
+
+            var merges = VersionControl.TrackMerges(new int[] { firstChangesetInBranchToCreate },
+                                                    new ItemIdentifier(tfsPathBranchToCreate),
+                                                    new ItemIdentifier[] { new ItemIdentifier(tfsPathParentBranch), },
+                                                    null)
+                                       .OrderByDescending(x => x.SourceChangeset.ChangesetId);
+
             MergeInfo lastMerge = null;
+
             foreach (var extendedMerge in merges)
             {
                 var sourceItem = extendedMerge.SourceItem.Item.ServerItem;
                 var targetItem = extendedMerge.TargetItem != null ? extendedMerge.TargetItem.Item : null;
                 var targetChangeType = extendedMerge.TargetItem != null ? extendedMerge.TargetItem.ChangeType : 0;
+
                 if (extendedMerge.TargetChangeset.ChangesetId > lastChangesetIdToCheck)
                     continue;
-                if (lastMerge != null && extendedMerge.SourceItem.ChangeType == lastMerge.SourceChangeType &&
+
+                if (lastMerge != null && 
+                    extendedMerge.SourceItem.ChangeType == lastMerge.SourceChangeType &&
                     targetChangeType == lastMerge.TargetChangeType &&
-                    sourceItem == lastMerge.SourceItem && targetItem == lastMerge.TargetItem)
+                    sourceItem == lastMerge.SourceItem && 
+                    targetItem == lastMerge.TargetItem)
                     continue;
+
                 lastMerge = new MergeInfo
                 {
                     SourceChangeType = extendedMerge.SourceItem.ChangeType,
@@ -546,6 +622,7 @@ namespace Sep.Git.Tfs.VsCommon
                     TargetChangeset = extendedMerge.TargetChangeset.ChangesetId,
                     TargetChangeType = extendedMerge.TargetItem != null ? extendedMerge.TargetItem.ChangeType : 0
                 };
+
                 mergedItemsToFirstChangesetInBranchToCreate.Add(lastMerge);
                 Trace.WriteLine(lastMerge, "Merge");
             }

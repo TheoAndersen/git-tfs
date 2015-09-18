@@ -760,6 +760,7 @@ namespace Sep.Git.Tfs.Core
                 globals.GcCountdown = globals.GcPeriod;
                 Repository.GarbageCollect(true, "Try running it after git-tfs is finished.");
             }
+            Trace.WriteLine("GC Countdown done");
         }
 
         private LogEntry Apply(string parent, ITfsChangeset changeset, IDictionary<string, GitObject> entries)
@@ -1000,7 +1001,7 @@ namespace Sep.Git.Tfs.Core
                 if (!Repository.CreateBranch(tfsRemote.RemoteRef, sha1RootCommit))
                     throw new GitTfsException("error: Fail to create remote branch ref file!");
             }
-            Trace.WriteLine("Remote created!");
+            Trace.WriteLine(" Remote created!");
             return tfsRemote;
         }
     }

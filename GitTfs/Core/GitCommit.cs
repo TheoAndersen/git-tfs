@@ -33,7 +33,7 @@ namespace Sep.Git.Tfs.Core
                     }
                     else
                     {
-                        Trace.WriteLine("Not including " + entry.Name + ": type is " + entry.GetType().Name);
+                        Trace.WriteLine(" Not including " + entry.Name + ": type is " + entry.GetType().Name);
                     }
                 }
             }
