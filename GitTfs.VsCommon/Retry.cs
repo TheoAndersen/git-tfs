@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using Sep.Git.Tfs.Core;
+using System.Diagnostics;
 
 namespace Sep.Git.Tfs.VsCommon
 {
@@ -34,6 +35,7 @@ namespace Sep.Git.Tfs.VsCommon
             {
                 try
                 {
+                    Trace.Write(".");
                     return action();
                 }
                 catch (Microsoft.TeamFoundation.TeamFoundationServerException ex)
@@ -67,6 +69,7 @@ namespace Sep.Git.Tfs.VsCommon
             while (action())
             {
                 count++;
+                Trace.Write(".");
                 if (count > retryCount)
                     throw new GitTfsException("error: Action failed after " + retryCount + " retries!");
                 Thread.Sleep(retryInterval);

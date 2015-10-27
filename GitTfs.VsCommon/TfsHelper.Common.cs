@@ -712,7 +712,7 @@ namespace Sep.Git.Tfs.VsCommon
 
         public void WithWorkspace(string localDirectory, IGitTfsRemote remote, TfsChangesetInfo versionToFetch, Action<ITfsWorkspace> action)
         {
-            Trace.WriteLine("Setting up a TFS workspace at " + localDirectory);
+            Trace.WriteLine("--> Setting up a TFS workspace at " + localDirectory);
             var workspace = Retry.Do(() => GetWorkspace(new WorkingFolder(remote.TfsRepositoryPath, localDirectory)));
             try
             {
@@ -853,14 +853,22 @@ namespace Sep.Git.Tfs.VsCommon
         /// </remarks>
         private static void TryToDeleteWorkspace(Workspace workspace)
         {
+            Trace.WriteLine("Deleting the workspace");
             //  Try and ensure the client and TFS Server are synchronized.
             workspace.Refresh();
 
+
+            Func<bool> deleteWorkspace = () =>
+            {
+                Trace.Write(".");
+                return workspace.Delete();
+            };
+
             //  When deleting a workspace we may need to allow the TFS server some time to complete existing processing or re-try the workspace delete.            
-            var deleteWsCompleted = Retry.Do(() => workspace.Delete(), TimeSpan.FromSeconds(5), 25);
+            var deleteWsCompleted = Retry.Do(() => deleteWorkspace(), TimeSpan.FromSeconds(5), 25);
 
             // Include trace information about the success of the TFS API that deletes the workspace.
-            Trace.WriteLine(string.Format(deleteWsCompleted ? "TFS Workspace '{0}' was removed." : "TFS Workspace '{0}' could not be removed", workspace.DisplayName));
+            Trace.WriteLine(string.Format(deleteWsCompleted ? "\n<-- TFS Workspace '{0}' was removed." : "\n<-- TFS Workspace '{0}' could not be removed", workspace.DisplayName));
 
         }
 
