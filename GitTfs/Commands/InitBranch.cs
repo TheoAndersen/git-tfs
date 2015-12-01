@@ -190,7 +190,7 @@ namespace Sep.Git.Tfs.Commands
         {
             public string TfsRepositoryPath { get; set; }
             public string GitBranchNameExpected { get; set; }
-            public long RootChangesetId { get; set; }
+            public int RootChangesetId { get; set; }
         }
 
         [DebuggerDisplay("{TfsRepositoryPath} C{RootChangesetId}")]
@@ -199,7 +199,7 @@ namespace Sep.Git.Tfs.Commands
             public string TfsRepositoryPath { get; set; }
             public IGitTfsRemote TfsRemote { get; set; }
             public bool IsEntirelyFetched { get; set; }
-            public long RootChangesetId { get; set; }
+            public int RootChangesetId { get; set; }
             public IList<RootBranch> CreationBranchData { get; set; }
             public Exception Error { get; set; }
         }
@@ -461,7 +461,7 @@ namespace Sep.Git.Tfs.Commands
             try
             {
                 Trace.WriteLine("Try fetching changesets...");
-                var fetchResult = tfsRemote.Fetch(stopOnFailMergeCommit, renameResult);
+                var fetchResult = tfsRemote.Fetch(stopOnFailMergeCommit, renameResult: renameResult);
                 Trace.WriteLine("Changesets fetched!");
 
                 if (fetchResult.IsSuccess && createBranch && tfsRemote.Id != GitTfsConstants.DefaultRepositoryId)

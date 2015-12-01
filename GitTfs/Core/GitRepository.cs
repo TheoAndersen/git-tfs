@@ -61,11 +61,16 @@ namespace Sep.Git.Tfs.Core
             return "refs/heads/" + branchName;
         }
 
+        public static string ShortToTfsRemoteName(string branchName)
+        {
+            return "refs/remotes/tfs/" + branchName;
+        }
+
         public string GitDir { get; set; }
         public string WorkingCopyPath { get; set; }
         public string WorkingCopySubdir { get; set; }
 
-        protected override Process Start(string[] command, Action<ProcessStartInfo> initialize)
+        protected override GitProcess Start(string[] command, Action<ProcessStartInfo> initialize)
         {
             return base.Start(command, initialize.And(SetUpPaths));
         }
@@ -277,7 +282,7 @@ namespace Sep.Git.Tfs.Core
 
         public void MoveTfsRefForwardIfNeeded(IGitTfsRemote remote, string @ref)
         {
-            long currentMaxChangesetId = remote.MaxChangesetId;
+            int currentMaxChangesetId = remote.MaxChangesetId;
             var untrackedTfsChangesets = from cs in GetLastParentTfsCommits(@ref)
                                          where cs.Remote.Id == remote.Id && cs.ChangesetId > currentMaxChangesetId
                                          orderby cs.ChangesetId
@@ -344,7 +349,7 @@ namespace Sep.Git.Tfs.Core
             Trace.WriteLine("Commits visited count:" + alreadyVisitedCommits.Count);
         }
 
-        public TfsChangesetInfo GetTfsChangesetById(string remoteRef, long changesetId)
+        public TfsChangesetInfo GetTfsChangesetById(string remoteRef, int changesetId)
         {
             var commit = FindCommitByChangesetId(changesetId, remoteRef);
             if (commit == null)
@@ -508,7 +513,26 @@ namespace Sep.Git.Tfs.Core
         {
             if (!Reference.IsValidName(ShortToLocalName(gitBranchName)))
                 throw new GitTfsException("The name specified for the new git branch is not allowed. Choose another one!");
+            while (IsRefNameUsed(gitBranchName))
+            {
+                gitBranchName = "_" + gitBranchName;
+            }
             return gitBranchName;
+        }
+
+        private bool IsRefNameUsed(string gitBranchName)
+        {
+            var parts = gitBranchName.Split('/');
+            var refName = parts.First();
+            for (int i = 1; i <= parts.Length; i++)
+            {
+                if (HasRef(ShortToLocalName(refName)) || HasRef(ShortToTfsRemoteName(refName)))
+                    return true;
+                if (i < parts.Length)
+                    refName += '/' + parts[i];
+            }
+            
+            return false;
         }
 
         public bool CreateBranch(string gitBranchName, string target)
@@ -525,10 +549,10 @@ namespace Sep.Git.Tfs.Core
             return reference != null;
         }
 
-        private readonly Dictionary<long, string> changesetsCache = new Dictionary<long, string>();
+        private readonly Dictionary<int, string> changesetsCache = new Dictionary<int, string>();
         private bool cacheIsFull = false;
 
-        public string FindCommitHashByChangesetId(long changesetId)
+        public string FindCommitHashByChangesetId(int changesetId)
         {
             var commit = FindCommitByChangesetId(changesetId);
             if (commit == null)
@@ -539,12 +563,12 @@ namespace Sep.Git.Tfs.Core
 
         private static readonly Regex tfsIdRegex = new Regex("^git-tfs-id: .*;C([0-9]+)\r?$", RegexOptions.Multiline | RegexOptions.Compiled | RegexOptions.RightToLeft);
 
-        public static bool TryParseChangesetId(string commitMessage, out long changesetId)
+        public static bool TryParseChangesetId(string commitMessage, out int changesetId)
         {
             var match = tfsIdRegex.Match(commitMessage);
             if (match.Success)
             {
-                changesetId = long.Parse(match.Groups[1].Value);
+                changesetId = int.Parse(match.Groups[1].Value);
                 return true;
             }
 
@@ -552,7 +576,7 @@ namespace Sep.Git.Tfs.Core
             return false;
         }
 
-        private Commit FindCommitByChangesetId(long changesetId, string remoteRef = null)
+        private Commit FindCommitByChangesetId(int changesetId, string remoteRef = null)
         {
             Trace.WriteLine("Looking for changeset " + changesetId + " in git repository...");
 
@@ -578,7 +602,7 @@ namespace Sep.Git.Tfs.Core
             Commit commit = null;
             foreach (var c in commitsFromRemoteBranches)
             {
-                long id;
+                int id;
                 if (TryParseChangesetId(c.Message, out id))
                 {
                     changesetsCache[id] = c.Sha;
